@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>管理后台</title></head>
+<body style="font-family:Arial;background:#081620;color:#dff7ff;padding:24px">
+<h2>管理后台</h2>
+<div>
+  <h3>封禁用户</h3>
+  <form id="ban">
+    <input id="uid" placeholder="用户 id"/>
+    <input id="days" placeholder="封禁天数"/>
+    <input id="reason" placeholder="理由"/>
+    <button>封禁</button>
+  </form>
+  <h3>设置角色</h3>
+  <form id="setrole">
+    <input id="uid2" placeholder="用户 id"/>
+    <select id="role"><option>user</option><option>manager</option><option>admin</option><option>superadmin</option></select>
+    <button>设置</button>
+  </form>
+</div>
+<script>
+const API='/api?action=';
+document.getElementById('ban').onsubmit = async (e)=>{
+  e.preventDefault();
+  const uid=document.getElementById('uid').value, days=document.getElementById('days').value, reason=document.getElementById('reason').value;
+  const r = await fetch(API+'ban_user', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: Number(uid), days: Number(days), reason})});
+  const j = await r.json(); alert(j.error||j.message);
+};
+document.getElementById('setrole').onsubmit = async (e)=>{
+  e.preventDefault();
+  const uid=document.getElementById('uid2').value, role=document.getElementById('role').value;
+  const r = await fetch(API+'set_manager', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: Number(uid), role})});
+  const j = await r.json(); alert(j.error||j.message);
+};
+</script>
+</body></html>

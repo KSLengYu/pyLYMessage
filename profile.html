@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>个人主页</title></head>
+<body style="font-family:Arial;background:#00141b;color:#dff7ff;padding:24px">
+<h2>个人主页</h2>
+<div id="info">正在加载...</div>
+<hr/>
+<h3>修改密码</h3>
+<form id="chgpass"><input id="old" placeholder="旧密码" type="password"/><input id="newp" placeholder="新密码" type="password"/><button>修改</button></form>
+<hr/>
+<h3>绑定 QQ（手动）</h3>
+<form id="bindqq">
+  <div><input id="qq_number" placeholder="QQ 号（例如 12345678）" /></div>
+  <div><input id="qq_nickname" placeholder="QQ 昵称（可选）" /></div>
+  <div><input id="qq_avatar" placeholder="头像 URL（可选）" /></div>
+  <div><button>绑定 QQ 信息</button></div>
+</form>
+<button id="unbindQQ">解绑 QQ</button>
+<hr/>
+<button id="logout">登出</button>
+<script>
+const API = '/api?action=';
+
+// 为了获取当前用户信息，前端通过一个简单后端接口来获取用户信息。后端目前没有 profile action，因此我们通过 login token 解码后需要后端扩展。
+// 这里提供简单 UI 行为：绑定/解绑/修改密码/登出会调用后端接口。
+async function loadInfo(){
+  // 简单提示：要完整展示用户信息，建议后端增加 /api?action=get_profile。
+  document.getElementById('info').innerText = '若需查看个人信息，请让后端扩展 get_profile 接口。目前可进行绑定/解绑/修改密码/登出操作。';
+}
+document.getElementById('bindqq').onsubmit = async (e)=>{
+  e.preventDefault();
+  const qq_number=document.getElementById('qq_number').value;
+  const qq_nickname=document.getElementById('qq_nickname').value;
+  const qq_avatar=document.getElementById('qq_avatar').value;
+  const r = await fetch(API + 'bind_qq_manual', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({qq_number, qq_nickname, qq_avatar})});
+  const j = await r.json();
+  alert(j.error || j.message);
+}
+document.getElementById('unbindQQ').onclick = async ()=>{
+  const r = await fetch(API + 'unbind_qq', {method:'POST'});
+  const j = await r.json(); alert(j.error || j.message);
+}
+document.getElementById('chgpass').onsubmit = async (e)=>{
+  e.preventDefault();
+  const old = document.getElementById('old').value, nw = document.getElementById('newp').value;
+  const r = await fetch(API + 'change_password', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({old_password:old, new_password:nw})});
+  const j = await r.json(); alert(j.error||j.message);
+}
+document.getElementById('logout').onclick = async ()=>{
+  await fetch(API + 'logout');
+  alert('已登出'); location.href='/';
+}
+loadInfo();
+</script>
+</body></html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>登录</title></head>
+<body style="font-family:Arial;background:#021018;color:#dff7ff;padding:24px">
+<h2>登录</h2>
+<form id="login">
+  <div><input id="email" placeholder="邮箱" type="text" /></div>
+  <div><input id="password" placeholder="密码" type="password" /></div>
+  <div><button type="submit">登录</button></div>
+</form>
+<div style="margin-top:12px"><a href="/register.html">注册</a></div>
+<script>
+const API = '/api?action=';
+document.getElementById('login').onsubmit = async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const r = await fetch(API + 'login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email,password})});
+  const j = await r.json();
+  if(j.error) alert(j.error); else { alert('登录成功'); location.href = '/'; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>科幻风留言板</title>
+<style>
+  :root{--bg:#061021;--card:#0b2338;--accent:#00d2ff;--muted:#7da3b3}
+  body{margin:0;font-family:Inter,Segoe UI,Arial;background:linear-gradient(135deg,var(--bg),#021018);color:#e6f7ff}
+  header{padding:24px 32px;display:flex;align-items:center;gap:16px}
+  .logo{font-weight:800;font-size:20px;color:var(--accent);letter-spacing:1px}
+  .container{display:grid;grid-template-columns:1fr 320px;gap:24px;padding:20px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;box-shadow:0 6px 30px rgba(0,0,0,0.6)}
+  form .row{display:flex;gap:8px;margin-bottom:8px}
+  input[type=text]{flex:1;padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.03);color:inherit}
+  button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#012;cursor:pointer}
+  #messages{margin-top:12px}
+  .msg{padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02);position:relative}
+  .meta{font-size:12px;color:var(--muted);display:flex;gap:10px;align-items:center}
+  .reply{margin-left:18px;border-left:2px solid rgba(255,255,255,0.03);padding-left:10px}
+  .controls{position:absolute;right:10px;top:8px;display:flex;gap:6px}
+  .admin-badge{display:inline-block;background:var(--accent);color:#012;padding:2px 6px;border-radius:6px;font-size:11px;margin-left:8px}
+  .changelog{padding:12px;height:80vh;overflow:auto}
+  .entry {animation: floatIn 900ms ease both}
+  @keyframes floatIn {
+    from {opacity:0; transform: translateY(10px) scale(0.99)}
+    to {opacity:1; transform: translateY(0) scale(1)}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">★ Nebula Board</div>
+  <div style="margin-left:auto">
+    <a href="/login.html" style="color:var(--muted);margin-right:12px">登录</a>
+    <a href="/register.html" style="color:var(--muted);margin-right:12px">注册</a>
+    <a href="/profile.html" style="color:var(--muted)">个人</a>
+  </div>
+</header>
+
+<div class="container">
+  <div>
+    <div class="card entry">
+      <h2>发布留言</h2>
+      <form id="postForm">
+        <div class="row"><input id="name" type="text" placeholder="你的名字（可选）"></div>
+        <div class="row"><input id="text" type="text" placeholder="说点什么..." required></div>
+        <div class="row">
+          <button type="submit">发布</button>
+          <button type="button" id="refreshBtn">刷新</button>
+        </div>
+        <div style="font-size:12px;color:#8fbccc">游客每天最多发 5 条，登录后无限制。管理员发布旁会带蓝勾认证。</div>
+      </form>
+    </div>
+
+    <div id="messages" class="card entry" style="margin-top:12px"></div>
+  </div>
+
+  <aside>
+    <div class="card changelog entry">
+      <h3>更新日志</h3>
+      <div id="changelogList">
+        <p>2025-11-19 — 首版：留言、回复、撤回、邮箱验证注册、手动 QQ 绑定、管理员权限、游客限流、IP/设备记录、科幻风 UI。</p>
+      </div>
+      <hr>
+      <a href="/admin.html" style="color:var(--muted)">后台管理</a>
+    </div>
+  </aside>
+</div>
+
+<script>
+const API = '/api?action=';
+async function fetchMessages(){
+  const res = await fetch(API + 'get_messages');
+  const j = await res.json();
+  const arr = j.messages || [];
+  const container = document.getElementById('messages');
+  container.innerHTML = '';
+  const byId = {};
+  arr.forEach(m=>byId[m.id]=m);
+  const roots = [];
+  arr.forEach(m=>{
+    if(m.parent_id){
+      const p = byId[m.parent_id];
+      if(p){
+        p._replies = p._replies || [];
+        p._replies.push(m);
+      } else {
+        roots.push(m);
+      }
+    } else {
+      roots.push(m);
+    }
+  });
+  function renderMessage(m, depth=0){
+    const el = document.createElement('div');
+    el.className = 'msg' + (depth? ' reply':'');
+    const user_info = m.user_info || {};
+    const name = m.name || (user_info.qq_nickname || (user_info.email ? user_info.email.split('@')[0] : '匿名'));
+    const role = user_info.role || '';
+    const time = new Date(m.created_at || Date.now()).toLocaleString();
+    el.innerHTML = `<div style="font-weight:600">${escapeHtml(name)} ${role && (role!=='user')?('<span class="admin-badge">✔</span>'):''}</div>
+                    <div style="margin-top:6px">${escapeHtml(m.text)}</div>
+                    <div class="meta">${escapeHtml(m.device||'未知设备')} · ${escapeHtml(m.location||'未知位置')} · ${time}</div>
+                    <div class="controls"><button data-id="${m.id}" class="replyBtn">回复</button>
+                    <button data-id="${m.id}" class="delBtn">撤回/删除</button></div>`;
+    if(user_info.qq_avatar){
+      const img = document.createElement('img');
+      img.src = user_info.qq_avatar;
+      img.style.width='34px'; img.style.height='34px'; img.style.borderRadius='6px'; img.style.float='right';
+      el.prepend(img);
+    }
+    if(m._replies && m._replies.length){
+      m._replies.forEach(rp=> el.appendChild(renderMessage(rp, depth+1)));
+    }
+    return el;
+  }
+  roots.forEach(r=>{
+    container.appendChild(renderMessage(r));
+  });
+  document.querySelectorAll('.replyBtn').forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.dataset.id;
+      const text = prompt('回复内容:');
+      if(!text) return;
+      fetch(API + 'add_message', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, parent_id: id})})
+      .then(()=>fetchMessages());
+    }
+  });
+  document.querySelectorAll('.delBtn').forEach(b=>{
+    b.onclick = async ()=>{
+      if(!confirm('确定删除/撤回？')) return;
+      const id = b.dataset.id;
+      const resp = await fetch(API + 'delete_message', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
+      const j = await resp.json();
+      if(j.error) alert('错误: '+j.error); else fetchMessages();
+    }
+  });
+}
+function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+document.getElementById('postForm').onsubmit = async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('name').value;
+  const text = document.getElementById('text').value;
+  let model = null;
+  try{ if(navigator.userAgentData && navigator.userAgentData.model){ model = navigator.userAgentData.model; } }catch(e){}
+  await fetch(API + 'add_message', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, text, device: model})
+  });
+  document.getElementById('text').value = '';
+  fetchMessages();
+}
+document.getElementById('refreshBtn').onclick = fetchMessages;
+fetchMessages();
+setInterval(fetchMessages, 15000);
+</script>
+</body>
+</html>

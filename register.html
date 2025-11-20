@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>注册</title></head>
+<body style="font-family:Arial;background:#021018;color:#dff7ff;padding:24px">
+<h2>注册（邮箱验证）</h2>
+<form id="reg">
+  <div><input id="email" placeholder="邮箱" type="text" /></div>
+  <div><input id="password" placeholder="密码" type="password" /></div>
+  <div><button type="submit">注册并发送验证码</button></div>
+</form>
+<hr/>
+<form id="verify">
+  <div><input id="v_email" placeholder="注册时的邮箱" type="text" /></div>
+  <div><input id="code" placeholder="邮箱验证码" type="text" /></div>
+  <div><button type="submit">验证邮箱</button></div>
+</form>
+<script>
+const API = '/api?action=';
+document.getElementById('reg').onsubmit = async (e)=>{
+  e.preventDefault();
+  const email=document.getElementById('email').value, password=document.getElementById('password').value;
+  const r=await fetch(API+'register',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify({email,password})});
+  const j=await r.json(); alert(j.error||j.message);
+}
+document.getElementById('verify').onsubmit = async (e)=>{
+  e.preventDefault();
+  const email=document.getElementById('v_email').value, code=document.getElementById('code').value;
+  const r=await fetch(API+'verify_email',{method:'POST',headers:{'Content-Type':'application/json'},body: JSON.stringify({email,code})});
+  const j=await r.json(); alert(j.error||j.message); if(!j.error) location.href='/login.html';
+}
+</script>
+</body>
+</html>
